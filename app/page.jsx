@@ -1,83 +1,26 @@
 // pages/index.js
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-export default function ImageCustomizer() {
+export default function Home() {
+  const [result, setResult] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+  const [showText, setShowText] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
-  const [selectedPlatform, setSelectedPlatform] = useState("facebook");
-  const [selectedFormat, setSelectedFormat] = useState("profile");
-  const [selectedDownloadFormat, setSelectedDownloadFormat] = useState("jpg");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [customWidth, setCustomWidth] = useState(500);
-  const [customHeight, setCustomHeight] = useState(500);
-  const [showCustom, setShowCustom] = useState(true);
-  const fileInputRef = useRef(null);
-  const canvasRef = useRef(null);
-  const downloadRef = useRef(null);
-  const containerRef = useRef(null);
-
-  const socialMediaFormats = {
-    facebook: {
-      profile: { width: 180, height: 180, label: "Profile Picture" },
-      cover: { width: 820, height: 312, label: "Cover Photo" },
-      post: { width: 1200, height: 630, label: "Post Image" },
-      story: { width: 1080, height: 1920, label: "Story" },
-    },
-    instagram: {
-      profile: { width: 320, height: 320, label: "Profile Picture" },
-      post: { width: 1080, height: 1080, label: "Square Post" },
-      landscape: { width: 1080, height: 566, label: "Landscape Post" },
-      story: { width: 1080, height: 1920, label: "Story" },
-      reel: { width: 1080, height: 1920, label: "Reel" },
-    },
-    twitter: {
-      profile: { width: 400, height: 400, label: "Profile Picture" },
-      header: { width: 1500, height: 500, label: "Header" },
-      post: { width: 1200, height: 675, label: "Post Image" },
-    },
-    linkedin: {
-      profile: { width: 400, height: 400, label: "Profile Picture" },
-      cover: { width: 1584, height: 396, label: "Cover Photo" },
-      post: { width: 1200, height: 627, label: "Post Image" },
-    },
-    tiktok: {
-      profile: { width: 200, height: 200, label: "Profile Picture" },
-      video: { width: 1080, height: 1920, label: "Video Cover" },
-    },
-    youtube: {
-      profile: { width: 800, height: 800, label: "Profile Picture" },
-      thumbnail: { width: 1280, height: 720, label: "Video Thumbnail" },
-      cover: { width: 2560, height: 1440, label: "Channel Cover" },
-    },
-    email: {
-      header: { width: 600, height: 400, label: "Email Header" },
-      banner: { width: 600, height: 200, label: "Email Banner" },
-    },
-    website: {
-      banner: { width: 1000, height: 500, label: "Website Banner" },
-      square: { width: 500, height: 500, label: "Square Image" },
-      hero: { width: 1920, height: 1080, label: "Hero Image" },
-    },
-  };
-
-  const downloadFormats = [
-    { id: "jpg", name: "JPG", color: "from-blue-600 to-cyan-500" },
-    { id: "png", name: "PNG", color: "from-purple-600 to-pink-500" },
-    { id: "webp", name: "WEBP", color: "from-green-600 to-emerald-500" },
-    { id: "gif", name: "GIF", color: "from-yellow-600 to-amber-500" },
-    { id: "bmp", name: "BMP", color: "from-red-600 to-orange-500" },
-    { id: "tiff", name: "TIFF", color: "from-indigo-600 to-violet-500" },
-  ];
+  const [loadingMessage, setLoadingMessage] = useState("Loading image...");
+  const loaderRef = useRef(null);
+  const resultRef = useRef(null);
+  const notifyRef = useRef(null);
+  const previewRef = useRef(null);
 
   const notify = (message, type = "success") => {
+    if (notifyRef.current === message) return;
+    notifyRef.current = message;
     toast[type](message, {
-      position: "bottom-right",
+      position: "top-right",
       autoClose: 3000,
       hideProgressBar: false,
       closeOnClick: false,
@@ -85,354 +28,161 @@ export default function ImageCustomizer() {
       draggable: true,
       theme: "colored",
     });
+    setTimeout(() => {
+      notifyRef.current = null;
+    }, 3000);
   };
 
   useEffect(() => {
-    document.title = "Image Format Customizer";
-
-    // Create floating shapes background
-    const container = containerRef.current;
-    if (!container) return;
-
-    // Clear any existing shapes
-    const existingShapes = container.querySelectorAll(".floating-shape");
-    existingShapes.forEach((shape) => shape.remove());
-
-    // Create new shapes
-    for (let i = 0; i < 20; i++) {
-      const shape = document.createElement("div");
-      shape.className = "floating-shape";
-
-      // Random position
-      const left = Math.random() * 100;
-      const top = Math.random() * 100;
-
-      // Random size
-      const size = Math.random() * 60 + 20;
-
-      // Random shape
-      const isCircle = Math.random() > 0.5;
-
-      // Random color
-      const colors = [
-        "rgba(92, 107, 192, 0.3)",
-        "rgba(106, 27, 154, 0.3)",
-        "rgba(56, 142, 60, 0.3)",
-        "rgba(245, 124, 0, 0.3)",
-        "rgba(211, 47, 47, 0.3)",
-        "rgba(2, 119, 189, 0.3)",
-      ];
-      const color = colors[Math.floor(Math.random() * colors.length)];
-
-      shape.style.cssText = `
-        position: absolute;
-        left: ${left}%;
-        top: ${top}%;
-        width: ${size}px;
-        height: ${size}px;
-        background: ${color};
-        border-radius: ${isCircle ? "50%" : "4px"};
-        animation: float ${Math.random() * 20 + 10}s linear infinite;
-        animation-delay: ${Math.random() * 5}s;
-        opacity: ${Math.random() * 0.5 + 0.2};
-        z-index: 0;
-      `;
-
-      container.appendChild(shape);
-    }
-
-    return () => {
-      // Clean up shapes when component unmounts
-      const shapes = container.querySelectorAll(".floating-shape");
-      shapes.forEach((shape) => shape.remove());
-    };
+    document.title = "Modernize resume - Jobkhuzi";
   }, []);
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    const file = e.dataTransfer.files[0];
-    if (
-      !file ||
-      !["image/jpeg", "image/png", "image/webp"].includes(file.type)
-    ) {
-      return notify(
-        "Please select a valid image file (JPG, PNG, WEBP).",
-        "error"
-      );
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file || !["image/jpeg", "image/png"].includes(file.type)) {
+      return notify("Please select a valid image file (JPG/PNG).", "error");
     }
 
-    handleFile(file);
-  };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    handleFile(file);
-  };
-
-  const handleFile = (file) => {
     setSelectedFile(file);
+    setLoadingMessage("Processing image...");
 
     try {
       const url = URL.createObjectURL(file);
       setImageUrl(url);
-
-      // Get image dimensions
-      const img = new Image();
-      img.onload = () => {
-        setDimensions({ width: img.width, height: img.height });
-      };
-      img.src = url;
+      previewRef.current.style.display = "flex";
     } catch (error) {
       console.error("Error in file processing:", error);
+      setLoadingMessage(`Error loading image: ${error.message}`);
       notify(`Error loading image: ${error.message}`, "error");
     }
   };
 
-  const downloadImage = () => {
-    if (!canvasRef.current) return;
+  const submitCV = async (token) => {
+    const fileInput = document.getElementById("InputItems");
+    const file = fileInput.files[0];
+    if (!file) return notify("Please select an image to upload.", "error");
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    loaderRef.current.style.display = "flex";
+    const formData = new FormData();
+    formData.append("file", file);
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    try {
+      // Simulate API call
+      setTimeout(() => {
+        const mockResults = `
+          <h2 class="text-xl font-bold text-teal-700 mb-4">Image Analysis Results</h2>
+          <div class="bg-teal-50 rounded-lg p-4 mb-4">
+            <h3 class="font-semibold text-teal-800 mb-2">Image Information</h3>
+            <ul class="list-disc pl-5 space-y-1">
+              <li><span class="font-medium">File name:</span> ${file.name}</li>
+              <li><span class="font-medium">Type:</span> ${file.type}</li>
+              <li><span class="font-medium">Size:</span> ${Math.round(
+                file.size / 1024
+              )} KB</li>
+            </ul>
+          </div>
+          <div class="bg-indigo-50 rounded-lg p-4 mb-4">
+            <h3 class="font-semibold text-indigo-800 mb-2">Content Analysis</h3>
+            <p class="mb-2">Your image contains:</p>
+            <ul class="list-disc pl-5 space-y-1">
+              <li>Text blocks: 4</li>
+              <li>Graphics: 2</li>
+              <li>Tables: 1</li>
+            </ul>
+          </div>
+          <div class="bg-amber-50 rounded-lg p-4">
+            <h3 class="font-semibold text-amber-800 mb-2">Recommendations</h3>
+            <ul class="list-disc pl-5 space-y-1">
+              <li>Optimize image quality for better text recognition</li>
+              <li>Consider converting to PDF for document processing</li>
+              <li>Check alignment for better readability</li>
+            </ul>
+          </div>
+        `;
+        setResult(mockResults);
+        loaderRef.current.style.display = "none";
+        resultRef.current.style.display = "block";
+        notify("Image uploaded and analyzed successfully!");
+        resultRef.current.scrollIntoView({ behavior: "smooth" });
+      }, 2000);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      loaderRef.current.style.display = "none";
+      notify(
+        error.message || "Error analyzing image. Please try again later.",
+        "error"
+      );
+    }
+  };
 
-    const img = new Image();
-    img.onload = () => {
-      // Set canvas dimensions
-      let width, height;
+  const getCaptcha = () => {
+    // Simulate reCAPTCHA
+    submitCV("dummy-token");
+  };
 
-      if (showCustom) {
-        width = customWidth;
-        height = customHeight;
-      } else {
-        const size = socialMediaFormats[selectedPlatform][selectedFormat];
-        width = size.width;
-        height = size.height;
-      }
+  const toggleTextDisplay = () => setShowText(!showText);
 
-      canvas.width = width;
-      canvas.height = height;
-
-      // Calculate aspect ratio
-      const imgAspect = img.width / img.height;
-      const canvasAspect = width / height;
-
-      let renderableWidth, renderableHeight;
-      let xStart, yStart;
-
-      // If image is wider than canvas
-      if (imgAspect > canvasAspect) {
-        renderableHeight = height;
-        renderableWidth = img.width * (renderableHeight / img.height);
-        xStart = (width - renderableWidth) / 2;
-        yStart = 0;
-      }
-      // If image is taller than canvas
-      else {
-        renderableWidth = width;
-        renderableHeight = img.height * (renderableWidth / img.width);
-        xStart = 0;
-        yStart = (height - renderableHeight) / 2;
-      }
-
-      // Draw image centered and cropped
-      ctx.drawImage(img, xStart, yStart, renderableWidth, renderableHeight);
-
-      // Create download link
-      let mimeType, extension;
-
-      switch (selectedDownloadFormat) {
-        case "jpg":
-          mimeType = "image/jpeg";
-          extension = "jpg";
-          break;
-        case "png":
-          mimeType = "image/png";
-          extension = "png";
-          break;
-        case "webp":
-          mimeType = "image/webp";
-          extension = "webp";
-          break;
-        case "gif":
-          mimeType = "image/gif";
-          extension = "gif";
-          break;
-        case "bmp":
-          mimeType = "image/bmp";
-          extension = "bmp";
-          break;
-        case "tiff":
-          // Note: Most browsers don't support TIFF in canvas
-          mimeType = "image/tiff";
-          extension = "tiff";
-          break;
-        default:
-          mimeType = "image/jpeg";
-          extension = "jpg";
-      }
-
-      try {
-        const dataURL = canvas.toDataURL(mimeType);
-        downloadRef.current.href = dataURL;
-
-        // Set filename
-        let filename = "custom-image";
-        if (!showCustom) {
-          filename = `${selectedPlatform}-${selectedFormat}`;
-        }
-        downloadRef.current.download = `${filename}.${extension}`;
-
-        // Trigger download
-        downloadRef.current.click();
-        notify(`Image downloaded as ${extension.toUpperCase()}!`);
-      } catch (e) {
-        notify(
-          `Error downloading ${extension.toUpperCase()} format: ${e.message}`,
-          "error"
-        );
-      }
-    };
-
-    img.src = imageUrl;
+  const handleScrollToggle = (e) => {
+    e.preventDefault();
+    window.scrollTo({
+      top: window.scrollY === 0 ? document.body.scrollHeight : 0,
+      behavior: "smooth",
+    });
   };
 
   const handleDeleteFile = () => {
     setSelectedFile(null);
     setImageUrl("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    previewRef.current.style.display = "none";
   };
 
-  const formatSuggestions = Object.entries(socialMediaFormats).map(
-    ([platform, formats]) => (
-      <div key={platform} className="bg-white/5 rounded-lg p-4">
-        <h3 className="text-lg font-bold text-white mb-3 capitalize">
-          {platform}
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {Object.entries(formats).map(([format, size]) => (
-            <div
-              key={format}
-              className={`p-3 rounded-lg cursor-pointer transition-all ${
-                selectedPlatform === platform && selectedFormat === format
-                  ? "bg-gradient-to-r from-purple-600 to-cyan-500"
-                  : "bg-white/10 hover:bg-white/20"
-              }`}
-              onClick={() => {
-                setSelectedPlatform(platform);
-                setSelectedFormat(format);
-                setShowCustom(true);
-              }}
-            >
-              <div className="text-sm font-medium text-white">{size.label}</div>
-              <div className="text-xs text-white/80">
-                {size.width}×{size.height}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  );
+  useEffect(() => {
+    const cvAnalysis = document.getElementById("CvAnalysis");
+    const onSubmit = (event) => {
+      event.preventDefault();
+      if (!document.getElementById("InputItems").files[0]) {
+        return notify("Please select your image", "error");
+      }
+      loaderRef.current.style.display = "flex";
+      getCaptcha();
+    };
+
+    cvAnalysis.addEventListener("submit", onSubmit);
+    return () => cvAnalysis.removeEventListener("submit", onSubmit);
+  }, []);
 
   return (
-    <div
-      ref={containerRef}
-      className="min-h-screen bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] text-white p-4 md:p-8 relative overflow-hidden"
-    >
-      {/* Floating shapes background */}
-      <style jsx global>{`
-        @keyframes float {
-          0% {
-            transform: translateY(100vh) rotate(0deg);
-          }
-          100% {
-            transform: translateY(-100px) rotate(720deg);
-          }
-        }
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-indigo-50 to-teal-100 flex flex-col items-center py-10 px-4">
+      {/* Header */}
+      <header className="w-full max-w-6xl text-center mb-8">
+        <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-teal-600 to-indigo-700 bg-clip-text text-transparent mb-3">
+          Modern Image Converter
+        </h1>
+        <p className="text-gray-600 max-w-2xl mx-auto">
+          Transform your images into actionable insights with our AI-powered
+          analysis tool. Upload JPG or PNG files for instant feedback and
+          optimization recommendations.
+        </p>
+      </header>
 
-        .floating-shape {
-          position: absolute;
-          animation: float linear infinite;
-        }
-      `}</style>
-
-      <div className="max-w-6xl mx-auto relative z-10">
-        {/* Header */}
-        <header className="text-center py-8 md:py-12">
-          <h1 className="text-3xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-cyan-300">
-            Social Media Image Customizer
-          </h1>
-          <p className="text-lg md:text-xl text-purple-200 max-w-2xl mx-auto">
-            Optimize your images for any platform with perfect dimensions and
-            download formats
-          </p>
-        </header>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Panel - Upload & Controls */}
-          <div className="lg:col-span-1 bg-gradient-to-br from-purple-900/20 to-blue-900/20 backdrop-blur-lg rounded-2xl border border-purple-500/30 shadow-xl p-6">
-            <h2 className="text-2xl font-bold text-cyan-200 mb-6">
-              Upload & Customize
-            </h2>
-
-            {/* Upload Area */}
-            <div
-              className={`w-full h-48 rounded-xl border-3 border-dashed flex flex-col items-center justify-center transition-all duration-300 cursor-pointer mb-6 ${
-                isDragging
-                  ? "bg-blue-900/40 border-cyan-400"
-                  : "bg-purple-900/30 border-purple-500 hover:border-cyan-400"
-              }`}
-              onClick={() => fileInputRef.current.click()}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              {selectedFile ? (
-                <div className="text-center">
-                  <div className="bg-gradient-to-r from-purple-700 to-blue-700 p-3 rounded-full mb-3 inline-block">
+      {/* Main Content */}
+      <div className="w-full max-w-6xl bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div className="flex flex-col lg:flex-row">
+          {/* Upload Section */}
+          <div className="w-full lg:w-1/2 p-6 md:p-8">
+            <form id="CvAnalysis" className="w-full">
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-teal-800 mb-4">
+                  Upload Your Image
+                </h2>
+                <div
+                  className="w-full h-64 p-6 border-3 border-dashed border-teal-300 bg-gradient-to-br from-teal-50 to-indigo-50 rounded-xl transition-all duration-300 hover:shadow-lg cursor-pointer flex flex-col items-center justify-center"
+                  onClick={() => document.getElementById("InputItems").click()}
+                >
+                  <div className="bg-teal-100 p-4 rounded-full mb-4">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-8 w-8 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-sm text-purple-300 truncate max-w-xs">
-                    {selectedFile.name}
-                  </p>
-                  <p className="text-xs text-purple-400 mt-1">
-                    Click to change
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="bg-gradient-to-r from-purple-700 to-blue-700 p-3 rounded-full mb-3">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-8 w-8 text-white"
+                      className="h-12 w-12 text-teal-600"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -445,336 +195,328 @@ export default function ImageCustomizer() {
                       />
                     </svg>
                   </div>
-                  <p className="text-base font-medium text-white">
-                    {isDragging
-                      ? "Drop your image here"
-                      : "Click or drag to upload"}
+                  <p className="text-lg font-medium text-teal-700">
+                    Click to Select Your Image
                   </p>
-                  <p className="text-xs text-purple-300 mt-2">
-                    Supports JPG, PNG, WEBP
+                  <p className="text-sm text-gray-600 mt-2">
+                    (Accepted Format: JPG, PNG)
                   </p>
-                </>
-              )}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept="image/jpeg, image/png, image/webp"
-                className="hidden"
-              />
-            </div>
-
-            {selectedFile && (
-              <div className="bg-purple-900/30 rounded-lg p-4 mb-6">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-medium text-cyan-200">Image Details</h3>
-                  <button
-                    onClick={handleDeleteFile}
-                    className="text-purple-300 hover:text-white text-sm"
-                  >
-                    Remove
-                  </button>
-                </div>
-                <div className="text-sm grid grid-cols-2 gap-2">
-                  <div className="bg-purple-900/40 p-2 rounded">
-                    <div className="text-purple-400">Dimensions</div>
-                    <div className="text-white">
-                      {dimensions.width}×{dimensions.height} px
-                    </div>
-                  </div>
-                  <div className="bg-purple-900/40 p-2 rounded">
-                    <div className="text-purple-400">Size</div>
-                    <div className="text-white">
-                      {(selectedFile.size / 1024).toFixed(1)} KB
-                    </div>
-                  </div>
+                  <input
+                    type="file"
+                    id="InputItems"
+                    onChange={handleFileUpload}
+                    accept="image/jpeg, image/png"
+                    className="hidden"
+                  />
                 </div>
               </div>
-            )}
 
-            {/* Custom Size Toggle */}
-            <div className="mb-6">
-              <div
-                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer ${
-                  showCustom ? "bg-cyan-900/30" : "bg-purple-900/30"
-                }`}
-                onClick={() => setShowCustom(!showCustom)}
-              >
-                <div className="flex items-center">
-                  <div
-                    className={`w-5 h-5 rounded-full mr-3 ${
-                      showCustom ? "bg-cyan-500" : "bg-purple-700"
-                    }`}
-                  ></div>
-                  <span className="font-medium">Custom Dimensions</span>
-                </div>
-                <span
-                  className={`px-2 py-1 rounded text-xs ${
-                    showCustom
-                      ? "bg-cyan-700 text-white"
-                      : "bg-purple-700 text-purple-300"
-                  }`}
-                >
-                  {showCustom ? "ON" : "OFF"}
-                </span>
-              </div>
-
-              {showCustom && (
-                <div className="mt-4 bg-purple-900/30 p-4 rounded-lg">
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm text-purple-300 mb-1">
-                        Width (px)
-                      </label>
-                      <input
-                        type="number"
-                        min="100"
-                        max="5000"
-                        value={customWidth}
-                        onChange={(e) =>
-                          setCustomWidth(parseInt(e.target.value) || 100)
-                        }
-                        className="w-full bg-purple-900/50 border border-purple-700 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-purple-300 mb-1">
-                        Height (px)
-                      </label>
-                      <input
-                        type="number"
-                        min="100"
-                        max="5000"
-                        value={customHeight}
-                        onChange={(e) =>
-                          setCustomHeight(parseInt(e.target.value) || 100)
-                        }
-                        className="w-full bg-purple-900/50 border border-purple-700 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-purple-400 mb-4">
-                    Aspect ratio: {(customWidth / customHeight).toFixed(2)}:1
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Download Button */}
-            <button
-              onClick={downloadImage}
-              disabled={!selectedFile || isLoading}
-              className={`w-full py-3 rounded-xl font-bold text-lg shadow-lg transition-all flex items-center justify-center ${
-                !selectedFile || isLoading
-                  ? "bg-gray-600 cursor-not-allowed"
-                  : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 hover:shadow-cyan-500/30"
-              }`}
-            >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              <div className="mb-8">
+                <div className="flex items-center mb-4">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      onClick={toggleTextDisplay}
                     />
-                  </svg>
-                  Download Image
-                </>
-              )}
-            </button>
+                    <div className="w-12 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600"></div>
+                  </label>
+                  <span className="ml-3 text-sm font-medium text-gray-700">
+                    Submit my image to{" "}
+                    <a
+                      href="https://jobkhuzi.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-teal-600 hover:text-teal-800 font-semibold"
+                    >
+                      Jobkhuzi
+                    </a>{" "}
+                    for job matching
+                  </span>
+                </div>
+
+                {showText && (
+                  <div className="bg-teal-50 border-l-4 border-teal-500 p-4 rounded-lg">
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                      <li>
+                        We do not save or store your information without your
+                        consent
+                      </li>
+                      <li>
+                        We do not save any user's information to third parties
+                      </li>
+                      <li>
+                        Data is transmitted via a secure connection over HTTPS
+                      </li>
+                      <li>
+                        Jobkhuzi may use your contact information solely for
+                        communication
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-teal-600 to-indigo-700 text-white font-bold py-3 rounded-lg shadow-lg hover:from-teal-700 hover:to-indigo-800 transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 mr-2"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Upload Image
+              </button>
+            </form>
           </div>
 
-          {/* Right Panel - Preview & Format Selection */}
-          <div className="lg:col-span-2">
-            {/* Preview Section */}
-            <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 backdrop-blur-lg rounded-2xl border border-purple-500/30 shadow-xl p-6 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-cyan-200">
-                  Image Preview
-                </h2>
-                {selectedFile && (
-                  <div className="text-sm bg-purple-900/50 px-3 py-1 rounded-full">
-                    {showCustom ? (
-                      <span>
-                        {customWidth}×{customHeight} px
-                      </span>
-                    ) : (
-                      <span className="capitalize">
-                        {selectedPlatform} {selectedFormat} (
-                        {
-                          socialMediaFormats[selectedPlatform][selectedFormat]
-                            .width
-                        }
-                        ×
-                        {
-                          socialMediaFormats[selectedPlatform][selectedFormat]
-                            .height
-                        }
-                        )
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-center mb-8">
-                {imageUrl ? (
-                  <div className="relative w-full max-w-4xl">
-                    <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 rounded-xl overflow-hidden shadow-xl border border-purple-500/20">
-                      <img
-                        src={imageUrl}
-                        alt="Preview"
-                        className="w-full max-h-[60vh] object-contain mx-auto"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full h-64 flex items-center justify-center bg-purple-900/20 rounded-xl border-2 border-dashed border-purple-500/30">
-                    <p className="text-purple-400">
-                      Upload an image to see preview
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Format Selection BELOW the image */}
-              <div className="mt-8">
-                <h3 className="text-xl font-bold text-cyan-200 mb-4 text-center">
-                  Select Download Format
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {downloadFormats.map((format) => (
-                    <button
-                      key={format.id}
-                      className={`py-3 rounded-xl font-medium shadow-lg transition-all ${
-                        selectedDownloadFormat === format.id
-                          ? "bg-gradient-to-r from-cyan-600 to-blue-500 transform scale-105"
-                          : "bg-white/10 hover:bg-white/20"
-                      }`}
-                      onClick={() => setSelectedDownloadFormat(format.id)}
-                    >
-                      {format.name}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="mt-4 text-center">
-                  <p className="text-sm text-purple-300">
-                    Selected:{" "}
-                    <span className="font-bold text-cyan-300">
-                      {selectedDownloadFormat.toUpperCase()}
-                    </span>{" "}
-                    -{" "}
-                    {selectedDownloadFormat === "jpg"
-                      ? "Best for photos"
-                      : selectedDownloadFormat === "png"
-                      ? "Supports transparency"
-                      : selectedDownloadFormat === "webp"
-                      ? "Modern efficient format"
-                      : selectedDownloadFormat === "gif"
-                      ? "Supports animation"
-                      : selectedDownloadFormat === "bmp"
-                      ? "Uncompressed format"
-                      : "High quality printing"}
-                  </p>
-                </div>
-              </div>
+          {/* Preview Section */}
+          <div
+            ref={previewRef}
+            className="w-full lg:w-1/2 bg-gradient-to-br from-indigo-50 to-teal-50 p-6 md:p-8 hidden flex-col"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-indigo-800">
+                Image Preview
+              </h2>
+              <button
+                className="text-gray-500 hover:text-red-500 transition-colors"
+                onClick={handleDeleteFile}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </div>
 
-            {/* Social Media Suggestions */}
-            <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 backdrop-blur-lg rounded-2xl border border-purple-500/30 shadow-xl p-6">
-              <h2 className="text-2xl font-bold text-cyan-200 mb-6">
-                Social Media Formats
-              </h2>
-
-              <div className="space-y-6">{formatSuggestions}</div>
-
-              <div className="mt-8 text-center text-sm text-purple-300">
-                <p>Select a format above or create custom dimensions</p>
-              </div>
+            <div className="flex-1 rounded-xl bg-white border border-gray-200 flex items-center justify-center p-4 overflow-hidden">
+              {imageUrl ? (
+                <img
+                  src={imageUrl}
+                  alt="Uploaded Preview"
+                  className="max-h-[400px] object-contain rounded-lg"
+                />
+              ) : (
+                <div className="text-center py-10">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">{loadingMessage}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
-
-        {/* Hidden canvas and download link */}
-        <canvas ref={canvasRef} className="hidden"></canvas>
-        <a ref={downloadRef} className="hidden"></a>
-
-        {/* Footer */}
-        <footer className="mt-12 text-center text-purple-300 py-6 border-t border-purple-500/30">
-          <p>© 2023 Social Media Image Customizer. All rights reserved.</p>
-          <p className="mt-2 text-sm">
-            Create perfectly sized images for any platform
-          </p>
-        </footer>
       </div>
 
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="dark"
-      />
+      {/* Results Section */}
+      <div
+        ref={resultRef}
+        id="result"
+        className="w-full max-w-6xl mt-8 bg-white rounded-2xl shadow-xl p-6 md:p-8 hidden animate-fadeIn"
+      >
+        <div className="flex justify-between items-start mb-6">
+          <h2 className="text-2xl font-bold text-teal-800">Analysis Results</h2>
+          <button
+            className="text-gray-500 hover:text-teal-700 transition-colors"
+            onClick={() => {
+              resultRef.current.style.display = "none";
+              handleDeleteFile();
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div
+          className="prose max-w-none"
+          dangerouslySetInnerHTML={{ __html: result }}
+        />
+      </div>
+
+      {/* Features Section */}
+      <div className="w-full max-w-6xl mt-10">
+        <h2 className="text-3xl font-bold text-center text-teal-800 mb-8">
+          Powerful Image Processing
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="bg-teal-100 w-14 h-14 rounded-full flex items-center justify-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-8 w-8 text-teal-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">
+              Quick Analysis
+            </h3>
+            <p className="text-gray-600">
+              Get instant insights about your images with our AI-powered
+              analysis engine.
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="bg-indigo-100 w-14 h-14 rounded-full flex items-center justify-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-8 w-8 text-indigo-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">
+              Secure Processing
+            </h3>
+            <p className="text-gray-600">
+              Your files are processed securely and never stored without your
+              permission.
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="bg-amber-100 w-14 h-14 rounded-full flex items-center justify-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-8 w-8 text-amber-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">
+              Optimization Tips
+            </h3>
+            <p className="text-gray-600">
+              Receive actionable recommendations to improve your image quality.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Scroll to top button */}
+      <button
+        onClick={handleScrollToggle}
+        className="fixed bottom-6 right-6 bg-gradient-to-r from-teal-600 to-indigo-700 text-white rounded-full p-3 shadow-lg hover:from-teal-700 hover:to-indigo-800 transition-all duration-300 transform hover:scale-110"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 15l7-7 7 7"
+          />
+        </svg>
+      </button>
+
+      {/* Loader */}
+      <div
+        ref={loaderRef}
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"
+      >
+        <div className="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-teal-600 mb-4"></div>
+          <p className="text-lg font-medium text-gray-800">
+            Processing your image...
+          </p>
+        </div>
+      </div>
+
+      <ToastContainer />
 
       <style jsx global>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+
         body {
-          font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
-            Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue",
-            sans-serif;
-          background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-          min-height: 100vh;
-          margin: 0;
-          color: white;
+          background-color: #f0fdfa;
         }
 
-        .Toastify__toast-container {
-          z-index: 9999;
+        .Toastify__toast--success {
+          background: linear-gradient(to right, #0d9488, #0891b2) !important;
+          border-radius: 10px !important;
         }
 
-        .Toastify__toast {
-          background: rgba(40, 30, 80, 0.9);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(125, 95, 255, 0.3);
-          border-radius: 12px;
-          color: white;
+        .Toastify__toast--error {
+          background: linear-gradient(to right, #ef4444, #dc2626) !important;
+          border-radius: 10px !important;
         }
 
         .Toastify__progress-bar {
-          background: linear-gradient(to right, #7d5fff, #5ce1e6);
-        }
-
-        .Toastify__close-button {
-          color: #a78bfa;
-        }
-
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-
-        input[type="number"] {
-          -moz-appearance: textfield;
+          height: 4px !important;
         }
       `}</style>
     </div>
