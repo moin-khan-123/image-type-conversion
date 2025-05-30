@@ -1,21 +1,35 @@
 // pages/index.js
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function Home() {
-  const [result, setResult] = useState("");
+  // States for the main functionality
   const [selectedFile, setSelectedFile] = useState(null);
-  const [showText, setShowText] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
-  const [loadingMessage, setLoadingMessage] = useState("Loading image...");
-  const loaderRef = useRef(null);
-  const resultRef = useRef(null);
-  const notifyRef = useRef(null);
-  const previewRef = useRef(null);
+  const [loadingMessage, setLoadingMessage] = useState("");
+  const [analysisResult, setAnalysisResult] = useState("");
 
+  // States for resizing functionality
+  const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
+  const [originalWidth, setOriginalWidth] = useState(0);
+  const [originalHeight, setOriginalHeight] = useState(0);
+  const [aspectRatio, setAspectRatio] = useState(1);
+  const [maintainAspect, setMaintainAspect] = useState(true);
+  const [quality, setQuality] = useState(90);
+  const [format, setFormat] = useState("jpeg");
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Refs for DOM manipulation
+  const previewRef = useRef(null);
+  const resultRef = useRef(null);
+  const loaderRef = useRef(null);
+  const notifyRef = useRef(null);
+
+  // Notification function
   const notify = (message, type = "success") => {
     if (notifyRef.current === message) return;
     notifyRef.current = message;
@@ -33,14 +47,17 @@ export default function Home() {
     }, 3000);
   };
 
-  useEffect(() => {
-    document.title = "Modernize resume - Jobkhuzi";
-  }, []);
-
+  // Handle file upload
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
-    if (!file || !["image/jpeg", "image/png"].includes(file.type)) {
-      return notify("Please select a valid image file (JPG/PNG).", "error");
+    if (
+      !file ||
+      !["image/jpeg", "image/png", "image/webp"].includes(file.type)
+    ) {
+      return notify(
+        "Please select a valid image file (JPG/PNG/WEBP).",
+        "error"
+      );
     }
 
     setSelectedFile(file);
@@ -57,98 +74,145 @@ export default function Home() {
     }
   };
 
-  const submitCV = async (token) => {
-    const fileInput = document.getElementById("InputItems");
-    const file = fileInput.files[0];
-    if (!file) return notify("Please select an image to upload.", "error");
+  // Handle image load to get dimensions
+  const handleImageLoad = (e) => {
+    const img = e.target;
+    setOriginalWidth(img.naturalWidth);
+    setOriginalHeight(img.naturalHeight);
+    setWidth(img.naturalWidth);
+    setHeight(img.naturalHeight);
+    setAspectRatio(img.naturalWidth / img.naturalHeight);
+  };
 
-    loaderRef.current.style.display = "flex";
-    const formData = new FormData();
-    formData.append("file", file);
+  // Handle dimension changes
+  const handleDimensionChange = (dimension, value) => {
+    const numValue = parseInt(value) || 0;
 
-    try {
-      // Simulate API call
-      setTimeout(() => {
-        const mockResults = `
-          <h2 class="text-xl font-bold text-teal-700 mb-4">Image Analysis Results</h2>
-          <div class="bg-teal-50 rounded-lg p-4 mb-4">
-            <h3 class="font-semibold text-teal-800 mb-2">Image Information</h3>
-            <ul class="list-disc pl-5 space-y-1">
-              <li><span class="font-medium">File name:</span> ${file.name}</li>
-              <li><span class="font-medium">Type:</span> ${file.type}</li>
-              <li><span class="font-medium">Size:</span> ${Math.round(
-                file.size / 1024
-              )} KB</li>
-            </ul>
-          </div>
-          <div class="bg-indigo-50 rounded-lg p-4 mb-4">
-            <h3 class="font-semibold text-indigo-800 mb-2">Content Analysis</h3>
-            <p class="mb-2">Your image contains:</p>
-            <ul class="list-disc pl-5 space-y-1">
-              <li>Text blocks: 4</li>
-              <li>Graphics: 2</li>
-              <li>Tables: 1</li>
-            </ul>
-          </div>
-          <div class="bg-amber-50 rounded-lg p-4">
-            <h3 class="font-semibold text-amber-800 mb-2">Recommendations</h3>
-            <ul class="list-disc pl-5 space-y-1">
-              <li>Optimize image quality for better text recognition</li>
-              <li>Consider converting to PDF for document processing</li>
-              <li>Check alignment for better readability</li>
-            </ul>
-          </div>
-        `;
-        setResult(mockResults);
-        loaderRef.current.style.display = "none";
-        resultRef.current.style.display = "block";
-        notify("Image uploaded and analyzed successfully!");
-        resultRef.current.scrollIntoView({ behavior: "smooth" });
-      }, 2000);
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      loaderRef.current.style.display = "none";
-      notify(
-        error.message || "Error analyzing image. Please try again later.",
-        "error"
-      );
+    if (dimension === "width") {
+      setWidth(numValue);
+      if (maintainAspect && numValue > 0) {
+        setHeight(Math.round(numValue / aspectRatio));
+      }
+    } else {
+      setHeight(numValue);
+      if (maintainAspect && numValue > 0) {
+        setWidth(Math.round(numValue * aspectRatio));
+      }
     }
   };
 
-  const getCaptcha = () => {
-    // Simulate reCAPTCHA
-    submitCV("dummy-token");
+  // Reset dimensions to original
+  const resetDimensions = () => {
+    setWidth(originalWidth);
+    setHeight(originalHeight);
   };
 
-  const toggleTextDisplay = () => setShowText(!showText);
+  // Analyze image (mock function)
+  const analyzeImage = () => {
+    setIsProcessing(true);
+    setLoadingMessage("Analyzing image...");
 
-  const handleScrollToggle = (e) => {
-    e.preventDefault();
-    window.scrollTo({
-      top: window.scrollY === 0 ? document.body.scrollHeight : 0,
-      behavior: "smooth",
-    });
+    // Simulate analysis
+    setTimeout(() => {
+      const mockResult = {
+        fileType: selectedFile.type.split("/")[1].toUpperCase(),
+        fileSize: `${Math.round(selectedFile.size / 1024)} KB`,
+        dimensions: `${originalWidth} × ${originalHeight}px`,
+        dominantColors: ["#4f46e5", "#0ea5e9", "#14b8a6"],
+        features: ["Text blocks", "Graphics", "Natural elements"],
+        recommendations: [
+          "Consider cropping to focus on subject",
+          "Adjust brightness for better contrast",
+          "Try converting to WebP for smaller file size",
+        ],
+      };
+
+      setAnalysisResult(mockResult);
+      resultRef.current.style.display = "block";
+      resultRef.current.scrollIntoView({ behavior: "smooth" });
+      setIsProcessing(false);
+      notify("Image analysis complete!");
+    }, 2000);
   };
 
+  // Download resized image
+  const downloadResizedImage = async () => {
+    if (!imageUrl || width <= 0 || height <= 0) {
+      notify("Please enter valid dimensions for the image", "error");
+      return;
+    }
+
+    setIsProcessing(true);
+    notify("Resizing image...", "info");
+
+    try {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.src = imageUrl;
+
+      await new Promise((resolve) => {
+        img.onload = () => {
+          canvas.width = width;
+          canvas.height = height;
+
+          // Draw image with high quality scaling
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, width, height);
+
+          resolve();
+        };
+      });
+
+      // Get the data URL based on selected format
+      let mimeType, extension;
+      switch (format) {
+        case "png":
+          mimeType = "image/png";
+          extension = "png";
+          break;
+        case "webp":
+          mimeType = "image/webp";
+          extension = "webp";
+          break;
+        default:
+          mimeType = "image/jpeg";
+          extension = "jpg";
+      }
+
+      const dataUrl = canvas.toDataURL(mimeType, quality / 100);
+
+      // Create download link
+      const link = document.createElement("a");
+      link.download = `resized-image-${width}x${height}.${extension}`;
+      link.href = dataUrl;
+      link.click();
+
+      notify("Image downloaded successfully!", "success");
+    } catch (error) {
+      console.error("Error resizing image:", error);
+      notify("Failed to resize image. Please try again.", "error");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle file deletion
   const handleDeleteFile = () => {
     setSelectedFile(null);
     setImageUrl("");
     previewRef.current.style.display = "none";
+    setAnalysisResult("");
+    if (resultRef.current) {
+      resultRef.current.style.display = "none";
+    }
   };
 
+  // Set page title
   useEffect(() => {
-    const cvAnalysis = document.getElementById("CvAnalysis");
-    const onSubmit = (event) => {
-      event.preventDefault();
-      if (!document.getElementById("InputItems").files[0]) {
-        return notify("Please select your image", "error");
-      }
-      loaderRef.current.style.display = "flex";
-      getCaptcha();
-    };
-
-    cvAnalysis.addEventListener("submit", onSubmit);
-    return () => cvAnalysis.removeEventListener("submit", onSubmit);
+    document.title = "Modern Image Converter - Jobkhuzi";
   }, []);
 
   return (
@@ -159,9 +223,8 @@ export default function Home() {
           Modern Image Converter
         </h1>
         <p className="text-gray-600 max-w-2xl mx-auto">
-          Transform your images into actionable insights with our AI-powered
-          analysis tool. Upload JPG or PNG files for instant feedback and
-          optimization recommendations.
+          Transform your images with our AI-powered tool. Upload, analyze, and
+          download images in custom sizes with ease.
         </p>
       </header>
 
@@ -170,96 +233,55 @@ export default function Home() {
         <div className="flex flex-col lg:flex-row">
           {/* Upload Section */}
           <div className="w-full lg:w-1/2 p-6 md:p-8">
-            <form id="CvAnalysis" className="w-full">
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-teal-800 mb-4">
-                  Upload Your Image
-                </h2>
-                <div
-                  className="w-full h-64 p-6 border-3 border-dashed border-teal-300 bg-gradient-to-br from-teal-50 to-indigo-50 rounded-xl transition-all duration-300 hover:shadow-lg cursor-pointer flex flex-col items-center justify-center"
-                  onClick={() => document.getElementById("InputItems").click()}
-                >
-                  <div className="bg-teal-100 p-4 rounded-full mb-4">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-12 w-12 text-teal-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-lg font-medium text-teal-700">
-                    Click to Select Your Image
-                  </p>
-                  <p className="text-sm text-gray-600 mt-2">
-                    (Accepted Format: JPG, PNG)
-                  </p>
-                  <input
-                    type="file"
-                    id="InputItems"
-                    onChange={handleFileUpload}
-                    accept="image/jpeg, image/png"
-                    className="hidden"
-                  />
-                </div>
-              </div>
-
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      onClick={toggleTextDisplay}
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-teal-800 mb-4">
+                Upload Your Image
+              </h2>
+              <div
+                className="w-full h-64 p-6 border-3 border-dashed border-teal-300 bg-gradient-to-br from-teal-50 to-indigo-50 rounded-xl transition-all duration-300 hover:shadow-lg cursor-pointer flex flex-col items-center justify-center"
+                onClick={() => document.getElementById("InputItems").click()}
+              >
+                <div className="bg-teal-100 p-4 rounded-full mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12 text-teal-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
                     />
-                    <div className="w-12 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600"></div>
-                  </label>
-                  <span className="ml-3 text-sm font-medium text-gray-700">
-                    Submit my image to{" "}
-                    <a
-                      href="https://jobkhuzi.com/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-teal-600 hover:text-teal-800 font-semibold"
-                    >
-                      Jobkhuzi
-                    </a>{" "}
-                    for job matching
-                  </span>
+                  </svg>
                 </div>
-
-                {showText && (
-                  <div className="bg-teal-50 border-l-4 border-teal-500 p-4 rounded-lg">
-                    <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
-                      <li>
-                        We do not save or store your information without your
-                        consent
-                      </li>
-                      <li>
-                        We do not save any user's information to third parties
-                      </li>
-                      <li>
-                        Data is transmitted via a secure connection over HTTPS
-                      </li>
-                      <li>
-                        Jobkhuzi may use your contact information solely for
-                        communication
-                      </li>
-                    </ul>
-                  </div>
-                )}
+                <p className="text-lg font-medium text-teal-700">
+                  Click to Select Your Image
+                </p>
+                <p className="text-sm text-gray-600 mt-2">
+                  (Accepted Format: JPG, PNG, WEBP)
+                </p>
+                <input
+                  type="file"
+                  id="InputItems"
+                  onChange={handleFileUpload}
+                  accept="image/jpeg, image/png, image/webp"
+                  className="hidden"
+                />
               </div>
+            </div>
 
+            <div className="flex flex-col gap-4">
               <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-teal-600 to-indigo-700 text-white font-bold py-3 rounded-lg shadow-lg hover:from-teal-700 hover:to-indigo-800 transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center"
+                onClick={analyzeImage}
+                disabled={!selectedFile || isProcessing}
+                className={`w-full ${
+                  !selectedFile || isProcessing
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-teal-600 to-indigo-700 hover:from-teal-700 hover:to-indigo-800"
+                } text-white font-bold py-3 rounded-lg shadow-lg transition-all duration-300 flex items-center justify-center`}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -269,13 +291,13 @@ export default function Home() {
                 >
                   <path
                     fillRule="evenodd"
-                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                    d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z"
                     clipRule="evenodd"
                   />
                 </svg>
-                Upload Image
+                Analyze Image
               </button>
-            </form>
+            </div>
           </div>
 
           {/* Preview Section */}
@@ -308,18 +330,187 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="flex-1 rounded-xl bg-white border border-gray-200 flex items-center justify-center p-4 overflow-hidden">
+            <div className="flex-1 rounded-xl bg-white border border-gray-200 flex items-center justify-center p-4 overflow-hidden mb-4">
               {imageUrl ? (
                 <img
                   src={imageUrl}
                   alt="Uploaded Preview"
-                  className="max-h-[400px] object-contain rounded-lg"
+                  className="max-h-[300px] object-contain rounded-lg"
+                  onLoad={handleImageLoad}
                 />
               ) : (
                 <div className="text-center py-10">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
                   <p className="text-gray-600">{loadingMessage}</p>
                 </div>
+              )}
+            </div>
+
+            {/* Resize Controls */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <h3 className="text-lg font-semibold text-indigo-700 mb-3">
+                Customize Image Size
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Width (px)
+                  </label>
+                  <input
+                    type="number"
+                    value={width}
+                    onChange={(e) =>
+                      handleDimensionChange("width", e.target.value)
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    min="1"
+                    max="5000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Height (px)
+                  </label>
+                  <input
+                    type="number"
+                    value={height}
+                    onChange={(e) =>
+                      handleDimensionChange("height", e.target.value)
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    min="1"
+                    max="5000"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="maintain-aspect"
+                    checked={maintainAspect}
+                    onChange={() => setMaintainAspect(!maintainAspect)}
+                    className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor="maintain-aspect"
+                    className="ml-2 text-sm text-gray-700"
+                  >
+                    Maintain aspect ratio
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={resetDimensions}
+                  className="text-sm text-teal-600 hover:text-teal-800 flex items-center"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  Reset to original
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Format
+                  </label>
+                  <select
+                    value={format}
+                    onChange={(e) => setFormat(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value="jpeg">JPEG</option>
+                    <option value="png">PNG</option>
+                    <option value="webp">WEBP</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quality: {quality}%
+                  </label>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={quality}
+                    onChange={(e) => setQuality(e.target.value)}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={downloadResizedImage}
+                disabled={isProcessing}
+                className={`w-full ${
+                  isProcessing
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-teal-600 to-indigo-700 hover:from-teal-700 hover:to-indigo-800"
+                } text-white font-medium py-2.5 rounded-lg transition-all duration-300 flex items-center justify-center`}
+              >
+                {isProcessing ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 mr-2"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Download Custom Size
+                  </>
+                )}
+              </button>
+
+              {originalWidth > 0 && (
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Original: {originalWidth} × {originalHeight}px
+                </p>
               )}
             </div>
           </div>
@@ -338,7 +529,6 @@ export default function Home() {
             className="text-gray-500 hover:text-teal-700 transition-colors"
             onClick={() => {
               resultRef.current.style.display = "none";
-              handleDeleteFile();
             }}
           >
             <svg
@@ -358,10 +548,85 @@ export default function Home() {
           </button>
         </div>
 
-        <div
-          className="prose max-w-none"
-          dangerouslySetInnerHTML={{ __html: result }}
-        />
+        {analysisResult && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h3 className="text-lg font-semibold text-indigo-700 mb-3">
+                Image Information
+              </h3>
+              <div className="space-y-2">
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-600">File Type</span>
+                  <span className="font-medium">{analysisResult.fileType}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-600">File Size</span>
+                  <span className="font-medium">{analysisResult.fileSize}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Dimensions</span>
+                  <span className="font-medium">
+                    {analysisResult.dimensions}
+                  </span>
+                </div>
+              </div>
+
+              <h3 className="text-lg font-semibold text-indigo-700 mt-6 mb-3">
+                Dominant Colors
+              </h3>
+              <div className="flex space-x-2">
+                {analysisResult.dominantColors.map((color, index) => (
+                  <div key={index} className="flex flex-col items-center">
+                    <div
+                      className="w-10 h-10 rounded-full border border-gray-200"
+                      style={{ backgroundColor: color }}
+                    ></div>
+                    <span className="text-xs mt-1">{color}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h3 className="text-lg font-semibold text-indigo-700 mb-3">
+                Features Detected
+              </h3>
+              <div className="flex flex-wrap gap-2 mb-6">
+                {analysisResult.features.map((feature, index) => (
+                  <span
+                    key={index}
+                    className="bg-indigo-100 text-indigo-800 text-sm px-3 py-1 rounded-full"
+                  >
+                    {feature}
+                  </span>
+                ))}
+              </div>
+
+              <h3 className="text-lg font-semibold text-indigo-700 mb-3">
+                Optimization Recommendations
+              </h3>
+              <ul className="space-y-2">
+                {analysisResult.recommendations.map((rec, index) => (
+                  <li key={index} className="flex items-start">
+                    <svg
+                      className="h-5 w-5 text-teal-500 mt-0.5 mr-2 flex-shrink-0"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span className="text-gray-700">{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Features Section */}
@@ -440,10 +705,10 @@ export default function Home() {
               </svg>
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">
-              Optimization Tips
+              Custom Sizes
             </h3>
             <p className="text-gray-600">
-              Receive actionable recommendations to improve your image quality.
+              Download your images in any size with our flexible resizing tool.
             </p>
           </div>
         </div>
@@ -451,7 +716,7 @@ export default function Home() {
 
       {/* Scroll to top button */}
       <button
-        onClick={handleScrollToggle}
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         className="fixed bottom-6 right-6 bg-gradient-to-r from-teal-600 to-indigo-700 text-white rounded-full p-3 shadow-lg hover:from-teal-700 hover:to-indigo-800 transition-all duration-300 transform hover:scale-110"
       >
         <svg
@@ -503,6 +768,7 @@ export default function Home() {
 
         body {
           background-color: #f0fdfa;
+          font-family: "Inter", sans-serif;
         }
 
         .Toastify__toast--success {
